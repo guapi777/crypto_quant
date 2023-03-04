@@ -29,25 +29,21 @@ ssize_t recv_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, int
 
 ssize_t send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
 
-    int sent = 0;
-    while (sent < len) {
-        int ret = send(sockfd, data + sent, len - sent, flags);
-        if (ret == -1) {
-            if (errno == EINTR || errno == EAGAIN) {
-                continue;
-            }
-            fprintf(stderr, "send() failed: %s\n", strerror(errno));
-            return -1;
-        }
-        sent += ret;
+    int ret = send(sockfd, data, len, flags);
+    if (ret == -1) {
+        fprintf(stderr, "send() failed: %s\n", strerror(errno));
+        return -1;
+
     }
     return 0;
 }
 
 int genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
+
     if (RAND_bytes(buf, (int) len) != 1) {
         return -1;
     }
+
     return 0;
 }
 
@@ -123,7 +119,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Could not connect to Binance API server\n");
         return EXIT_FAILURE;
     }
-
 
 
     wslay_event_context_ptr ctx;
