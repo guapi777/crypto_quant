@@ -72,10 +72,7 @@ void on_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_
 
 
 int main(int argc, char *argv[]) {
-
-
-
-    // get binance address info
+    // get okx address info
     struct addrinfo hints = {
             .ai_family = AF_UNSPEC,
             .ai_socktype = SOCK_STREAM,
@@ -88,19 +85,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "getaddrinfo() failed: %s\n", gai_strerror(s));
         return EXIT_FAILURE;
     }
-
-    // 设置代理服务器
-    struct sockaddr_in proxy_addr;
-    memset(&proxy_addr, 0, sizeof(proxy_addr));
-    proxy_addr.sin_family = AF_INET;
-    proxy_addr.sin_addr.s_addr = inet_addr(PROXY_HOST);
-    proxy_addr.sin_port = htons(PROXY_PORT);
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (connect(sock, (struct sockaddr *) &proxy_addr, sizeof(proxy_addr)) < 0) {
-        perror("connect error");
-        exit(1);
-    }
-
 
     for (rp = result; rp != NULL; rp = rp->ai_next) {
         sockfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -116,7 +100,7 @@ int main(int argc, char *argv[]) {
 
     if (rp == NULL) {
         /* No address succeeded */
-        fprintf(stderr, "Could not connect to Binance API server\n");
+        fprintf(stderr, "Could not connect to okx API server\n");
         return EXIT_FAILURE;
     }
 
