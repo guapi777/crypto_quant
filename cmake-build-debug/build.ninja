@@ -49,9 +49,9 @@ cmake_ninja_workdir = /home/yuanz/CLionProjects/crypto_quant/cmake-build-debug/
 
 build cmake_object_order_depends_target_crypto_quant: phony || CMakeFiles/crypto_quant.dir
 
-build CMakeFiles/crypto_quant.dir/main.c.o: C_COMPILER__crypto_quant_Debug /home/yuanz/CLionProjects/crypto_quant/main.c || cmake_object_order_depends_target_crypto_quant
-  DEP_FILE = CMakeFiles/crypto_quant.dir/main.c.o.d
-  FLAGS = -g -fdiagnostics-color=always -std=gnu11
+build CMakeFiles/crypto_quant.dir/main.cc.o: CXX_COMPILER__crypto_quant_Debug /home/yuanz/CLionProjects/crypto_quant/main.cc || cmake_object_order_depends_target_crypto_quant
+  DEP_FILE = CMakeFiles/crypto_quant.dir/main.cc.o.d
+  FLAGS = -g -fdiagnostics-color=always
   OBJECT_DIR = CMakeFiles/crypto_quant.dir
   OBJECT_FILE_DIR = CMakeFiles/crypto_quant.dir
 
@@ -63,9 +63,9 @@ build CMakeFiles/crypto_quant.dir/main.c.o: C_COMPILER__crypto_quant_Debug /home
 #############################################
 # Link the executable crypto_quant
 
-build crypto_quant: C_EXECUTABLE_LINKER__crypto_quant_Debug CMakeFiles/crypto_quant.dir/main.c.o
+build crypto_quant: CXX_EXECUTABLE_LINKER__crypto_quant_Debug CMakeFiles/crypto_quant.dir/main.cc.o
   FLAGS = -g
-  LINK_LIBRARIES = -lwslay  -lssl  -lcrypto
+  LINK_LIBRARIES = -lwslay  -lssl  -lcrypto  -lnettle
   OBJECT_DIR = CMakeFiles/crypto_quant.dir
   POST_BUILD = :
   PRE_LINK = :
@@ -115,14 +115,14 @@ build all: phony crypto_quant
 #############################################
 # Re-run CMake if any of its inputs changed.
 
-build build.ninja: RERUN_CMAKE | /home/yuanz/CLionProjects/crypto_quant/CMakeLists.txt /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake
+build build.ninja: RERUN_CMAKE | /home/yuanz/CLionProjects/crypto_quant/CMakeLists.txt /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCXXInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-CXX.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-CXX.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeCXXCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake
   pool = console
 
 
 #############################################
 # A missing CMake input file is not an error.
 
-build /home/yuanz/CLionProjects/crypto_quant/CMakeLists.txt /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake: phony
+build /home/yuanz/CLionProjects/crypto_quant/CMakeLists.txt /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCXXInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeCommonLanguageInclude.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeGenericSystem.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeInitializeConfigs.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeLanguageInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInformation.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/CMakeSystemSpecificInitialize.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/CMakeCommonCompilerMacros.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU-CXX.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Compiler/GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-C.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU-CXX.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux-GNU.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/Linux.cmake /snap/clion/222/bin/cmake/linux/x64/share/cmake-3.24/Modules/Platform/UnixPaths.cmake CMakeCache.txt CMakeFiles/3.24.2/CMakeCCompiler.cmake CMakeFiles/3.24.2/CMakeCXXCompiler.cmake CMakeFiles/3.24.2/CMakeSystem.cmake: phony
 
 
 #############################################
