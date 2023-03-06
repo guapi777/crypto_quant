@@ -117,22 +117,8 @@ auto get_random16() {
     return std::string(buf, buf + 16);
 }
 
-int connect_addr(const char *host_name, const char *service) {
-    // 初始化 OpenSSL 库
-    SSL_library_init();
-    OpenSSL_add_all_algorithms();
-    SSL_load_error_strings();
+int connect_addr(SSL *ssl, const char *host_name, const char *service) {
 
-    // 创建一个 SSL_CTX 对象
-    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-    if (!ctx) {
-        std::cerr << "Error: could not create SSL context\n";
-        ERR_print_errors_fp(stderr);
-        return -1;
-    }
-
-    // 创建SSL连接
-    SSL *ssl = SSL_new(ctx);
     SSL_set_tlsext_host_name(ssl, host_name);
 
     // 创建TCP socket连接
@@ -154,11 +140,6 @@ int connect_addr(const char *host_name, const char *service) {
     // 建立 SSL 连接
     for (int i = 0; i <= 10; i++) {
         if (i == 10) {
-            std::cerr << "Error: could not establish SSL connection\n";
-            ERR_print_errors_fp(stderr);
-            SSL_shutdown(ssl);
-            SSL_free(ssl);
-            SSL_CTX_free(ctx);
             return -1;
         }
 
@@ -179,43 +160,29 @@ int connect_addr(const char *host_name, const char *service) {
     return 0;
 }
 
-int recv_http_handshake(int fd, std::string &resheader) {
-    char buf2[4096];
-    while (true) {
-        ssize_t r;
-        (r = recv(fd, buf2, 4096, 0));
-        if (r <= 0) {
-            return -1;
-        }
-        resheader.append(buf2, buf2 + r);
-        if (resheader.find("\r\n\r\n") != std::string::npos) {
-            break;
-        }
-        if (resheader.size() > 8192) {
-            std::cerr << "Too big response header" << std::endl;
-            return -1;
-        }
+int recv_http_handshake(SSL *ssl, std::string &resheader) {
+    char buf[4096];
+    ssize_t r = SSL_read(ssl, buf, sizeof(buf));
+    if (r <= 0) {
+        return -1;
+    }
+    buf[r] = '\0';
+    resheader = buf;
+    return 0;
+}
+
+int send_http_handshake(SSL *ssl, const std::string &reqheader) {
+    ssize_t r;
+    r = SSL_write(ssl, reqheader.c_str(), reqheader.length());
+    if (r == -1) {
+        perror("write");
+        return -1;
     }
     return 0;
 }
 
-int send_http_handshake(int fd, const std::string &reqheader) {
-    size_t off = 0;
-    while (off < reqheader.size()) {
-        ssize_t r;
-        size_t len = reqheader.size() - off;
-        while ((r = send(fd, reqheader.c_str() + off, len, 0)) == -1 && errno == EINTR);
-        if (r == -1) {
-            perror("write");
-            return -1;
-        }
-        off += r;
-    }
-    return 0;
-}
+int http_handshake(SSL *ssl, const char *host, const char *path, std::string &body) {
 
-int http_handshake(const char *host, const char *service,
-                   const char *path, std::string &body) {
     char buf[4096];
     std::string client_key = base64(get_random16());
     snprintf(buf, sizeof(buf),
@@ -226,18 +193,17 @@ int http_handshake(const char *host, const char *service,
              "Sec-WebSocket-Key: %s\r\n"
              "Sec-WebSocket-Version: 13\r\n"
              "\r\n",
-             path, host, client_key.c_str()); //
-    std::cout << buf << std::endl;
+             path, host, client_key.c_str());
     std::string reqheader = buf;
-    if (send_http_handshake(sockfd, reqheader) == -1) {
+    if (send_http_handshake(ssl, reqheader) == -1) {
         return -1;
     }
     std::string resheader;
-    if (recv_http_handshake(sockfd, resheader) == -1) {
+    if (recv_http_handshake(ssl, resheader) == -1) {
         return -1;
     }
     std::string::size_type keyhdstart;
-    if ((keyhdstart = resheader.find("Sec-WebSocket-Accept: ")) ==
+    if ((keyhdstart = resheader.find("sec-websocket-accept: ")) ==
         std::string::npos) {
         std::cerr << "http_upgrade: missing required headers" << std::endl;
         return -1;
@@ -258,13 +224,44 @@ int main(int argc, char *argv[]) {
     char host_name[] = "ws.okx.com";
     char service[] = "8433";
     char path[] = "/ws/v5/public";
-    wslay_event_context_ptr wslay_ctx;
     std::string body;
 
-    if (connect_addr(host_name, service) == -1) {
+    // 初始化 OpenSSL 库
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+
+    // 创建一个 SSL_CTX 对象
+    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+    if (!ctx) {
+        std::cerr << "Error: could not create SSL context\n";
+        ERR_print_errors_fp(stderr);
         return -1;
     }
 
+    // 创建SSL连接
+    SSL *ssl = SSL_new(ctx);
+
+    if (connect_addr(ssl, host_name, service) == -1) {
+        std::cerr << "Error: could not establish SSL connection\n";
+        ERR_print_errors_fp(stderr);
+        SSL_shutdown(ssl);
+        SSL_free(ssl);
+        SSL_CTX_free(ctx);
+        return -1;
+    }
+
+    if (http_handshake(ssl, host_name, path, body) == -1) {
+        std::cerr << "Failed handshake" << std::endl;
+        close(sockfd);
+        return -1;
+    } else{
+        std::cout << "success handshake" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+    }
+
+
+    wslay_event_context_ptr wslay_ctx;
     struct wslay_event_callbacks callbacks = {
             .recv_callback= recv_callback,
             .send_callback = send_callback,
@@ -282,12 +279,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-
-    if (http_handshake(host_name, service, path, body) == -1) {
-        std::cerr << "Failed handshake" << std::endl;
-        close(sockfd);
-        return -1;
-    }
 
     //wslay_event_queue_msg(wslay_ctx, &event_msg);
 
