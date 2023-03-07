@@ -18,69 +18,45 @@
 #include <nettle/sha.h>
 
 static int sockfd;
+static SSL *ssl;
+static const uint8_t makskey[] = {0x37u, 0xfau, 0x21u, 0x3du};
 
 ssize_t recv_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, int flags, void *user_data) {
-    char buf2[4096];
-    ssize_t nbytes = recv(sockfd, buf2, len, 0);
-    if (nbytes == -1) {
-        // handle error
+    std::cout << "___frame_recv_callback____" << "len= " << len << std::endl;
+    while (SSL_read(ssl, buf, sizeof(buf)) > 0) {
+        std::cout << buf ;
     }
-    char str[len + 1];
-    memcpy(str, buf, len);
-    str[len] = '\0';
-    //printf("%s\n", str);
 
-    return nbytes;
+    return 0;
 }
 
 
 ssize_t send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t len, int flags, void *user_data) {
-    printf("%d ", data[0]);
-    printf("%d ", data[1]);
-    printf("%d ", data[2]);
-    printf("%d ", data[3]);
-    printf("%d \n", data[4]);
-
-
-    struct Session *session = (struct Session *) user_data;
-
-
-    int ret = send(sockfd, data, len, flags);
-    if (ret == -1) {
-        fprintf(stderr, "send() failed: %s\n", strerror(errno));
+    ssize_t r;
+    r = SSL_write(ssl, data, len);
+    if (r == -1) {
+        perror("write");
         return -1;
-
     }
-    return 0;
+    return r;
 }
 
 int genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
-
+    memcpy(buf, makskey, 4);
     return 0;
-}
-
-void
-on_frame_recv_start_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_frame_recv_start_arg *arg,
-                             void *user_data) {
-    printf("on_frame_recv_start_callback\n");
 
 }
 
-void
-on_frame_recv_chunk_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_frame_recv_chunk_arg *arg,
-                             void *user_data) {
-    printf("on_frame_recv_chunk_callback\n");
+void on_msg_recv_callback(wslay_event_context_ptr ctx,
+                          const struct wslay_event_on_msg_recv_arg *arg,
+                          void *user_data) {
+
+    if (!wslay_is_ctrl_frame(arg->opcode)) {
+        struct wslay_event_msg msgarg = {arg->opcode, arg->msg, arg->msg_length};
+        wslay_event_queue_msg(ctx, &msgarg);
+    }
 }
 
-void
-on_frame_recv_end_callback(wslay_event_context_ptr ctx, void *user_data) {
-    printf("on_frame_recv_end_callback\n");
-}
-
-void on_msg_recv_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_msg_recv_arg *arg, void *user_data) {
-    printf("on_msg_recv_callback\n");
-
-}
 
 std::string base64(const std::string &src) {
     base64_encode_ctx ctx{};
@@ -117,7 +93,7 @@ auto get_random16() {
     return std::string(buf, buf + 16);
 }
 
-int connect_addr(SSL *ssl, const char *host_name, const char *service) {
+int connect_addr(const char *host_name, const int service) {
 
     SSL_set_tlsext_host_name(ssl, host_name);
 
@@ -160,7 +136,7 @@ int connect_addr(SSL *ssl, const char *host_name, const char *service) {
     return 0;
 }
 
-int recv_http_handshake(SSL *ssl, std::string &resheader) {
+int recv_http_handshake(std::string &resheader) {
     char buf[4096];
     ssize_t r = SSL_read(ssl, buf, sizeof(buf));
     if (r <= 0) {
@@ -171,7 +147,7 @@ int recv_http_handshake(SSL *ssl, std::string &resheader) {
     return 0;
 }
 
-int send_http_handshake(SSL *ssl, const std::string &reqheader) {
+int send_http_handshake(const std::string &reqheader) {
     ssize_t r;
     r = SSL_write(ssl, reqheader.c_str(), reqheader.length());
     if (r == -1) {
@@ -181,7 +157,7 @@ int send_http_handshake(SSL *ssl, const std::string &reqheader) {
     return 0;
 }
 
-int http_handshake(SSL *ssl, const char *host, const char *path, std::string &body) {
+int http_handshake(const char *host, const char *path, std::string &body) {
 
     char buf[4096];
     std::string client_key = base64(get_random16());
@@ -195,11 +171,11 @@ int http_handshake(SSL *ssl, const char *host, const char *path, std::string &bo
              "\r\n",
              path, host, client_key.c_str());
     std::string reqheader = buf;
-    if (send_http_handshake(ssl, reqheader) == -1) {
+    if (send_http_handshake(reqheader) == -1) {
         return -1;
     }
     std::string resheader;
-    if (recv_http_handshake(ssl, resheader) == -1) {
+    if (recv_http_handshake(resheader) == -1) {
         return -1;
     }
     std::string::size_type keyhdstart;
@@ -222,7 +198,7 @@ int http_handshake(SSL *ssl, const char *host, const char *path, std::string &bo
 int main(int argc, char *argv[]) {
 
     char host_name[] = "ws.okx.com";
-    char service[] = "8433";
+    int service = 433;
     char path[] = "/ws/v5/public";
     std::string body;
 
@@ -240,9 +216,9 @@ int main(int argc, char *argv[]) {
     }
 
     // 创建SSL连接
-    SSL *ssl = SSL_new(ctx);
+    ssl = SSL_new(ctx);
 
-    if (connect_addr(ssl, host_name, service) == -1) {
+    if (connect_addr(host_name, service) == -1) {
         std::cerr << "Error: could not establish SSL connection\n";
         ERR_print_errors_fp(stderr);
         SSL_shutdown(ssl);
@@ -251,49 +227,63 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    if (http_handshake(ssl, host_name, path, body) == -1) {
+    if (http_handshake(host_name, path, body) == -1) {
         std::cerr << "Failed handshake" << std::endl;
         close(sockfd);
         return -1;
-    } else{
+    } else {
         std::cout << "success handshake" << std::endl;
         std::cout << "-------------------------------" << std::endl;
     }
 
+    wslay_event_context_ptr wslay_event_ctx;
+    struct wslay_event_callbacks event_callbacks = {
+            recv_callback,
+            send_callback,
+            genmask_callback,
+            nullptr, /* on_frame_recv_start_callback */
+            nullptr, /* on_frame_recv_callback */
+            nullptr, /* on_frame_recv_end_callback */
+            on_msg_recv_callback, /* on_msg_recv_callback */
 
-    wslay_event_context_ptr wslay_ctx;
-    struct wslay_event_callbacks callbacks = {
-            .recv_callback= recv_callback,
-            .send_callback = send_callback,
-            .genmask_callback = genmask_callback,
-            .on_frame_recv_start_callback = on_frame_recv_start_callback,
-            .on_frame_recv_chunk_callback  =on_frame_recv_chunk_callback,
-            .on_frame_recv_end_callback = on_frame_recv_end_callback,
-            .on_msg_recv_callback = on_msg_recv_callback,
     };
 
-
-    if (wslay_event_context_client_init(&wslay_ctx, &callbacks, nullptr) != 0) {
+    if (wslay_event_context_client_init(&wslay_event_ctx, &event_callbacks, nullptr) != 0) {
         fprintf(stderr, "Failed to initialize wslay_event_context.\n");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
 
-    //wslay_event_queue_msg(wslay_ctx, &event_msg);
+    std::string msg = "{\n"
+                      "\"op\":\"subscribe\",\n"
+                      "\"args\":[\n"
+                      "{\n"
+                      "    \"channel\":\"tickers\",\n"
+                      "    \"instId\":\"LTC-USD-200327\"\n"
+                      "},\n"
+                      "{\n"
+                      "    \"channel\":\"candle1m\",\n"
+                      "    \"instId\":\"LTC-USD-200327\"\n"
+                      "}\n"
+                      "]\n"
+                      "}";
+
+    wslay_event_msg event_msg = {
+            .opcode = WSLAY_TEXT_FRAME,
+            .msg = (uint8_t *) msg.c_str(),
+            .msg_length = msg.size()
+    };
+
+    wslay_event_queue_msg(wslay_event_ctx, &event_msg);
+
+    wslay_event_send(wslay_event_ctx);
 
 
-    if (wslay_event_want_write(wslay_ctx)) {
-        int ret = wslay_event_send(wslay_ctx);
+    wslay_event_recv(wslay_event_ctx);
 
-        if (ret != 0) {
-            fprintf(stderr, "Error sending data with wslay: %d\n", ret);
-            return -1;
-        }
-    }
-    wslay_event_recv(wslay_ctx);
 
-    wslay_event_context_free(wslay_ctx);
+    wslay_event_context_free(wslay_event_ctx);
 
     return 0;
 }
