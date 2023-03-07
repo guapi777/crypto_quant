@@ -24,7 +24,7 @@ static const uint8_t makskey[] = {0x37u, 0xfau, 0x21u, 0x3du};
 ssize_t recv_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, int flags, void *user_data) {
     std::cout << "___frame_recv_callback____" << "len= " << len << std::endl;
     while (SSL_read(ssl, buf, sizeof(buf)) > 0) {
-        std::cout << buf ;
+        std::cout << buf;
     }
 
     return 0;
