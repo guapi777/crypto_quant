@@ -29,7 +29,7 @@ ssize_t recv_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, int
 
         std::cout << stringView1 << std::endl;
 
-        r = SSL_read(ssl, buf, sizeof(buf));
+        r = SSL_read(ssl, buf, sizeof(buf) );
     }
 
 
