@@ -23,9 +23,15 @@ static const uint8_t makskey[] = {0x37u, 0xfau, 0x21u, 0x3du};
 
 ssize_t recv_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, int flags, void *user_data) {
     std::cout << "___frame_recv_callback____" << "len= " << len << std::endl;
-    while (SSL_read(ssl, buf, sizeof(buf)) > 0) {
-        std::cout << buf;
+    int r = SSL_read(ssl, buf, len);
+    while (r > 0) {
+        std::string_view stringView1((char *) buf, r);
+
+        std::cout << stringView1 << std::endl;
+
+        r = SSL_read(ssl, buf, sizeof(buf));
     }
+
 
     return 0;
 }
@@ -143,6 +149,7 @@ int recv_http_handshake(std::string &resheader) {
         return -1;
     }
     buf[r] = '\0';
+    // std::cout << buf << std::endl;
     resheader = buf;
     return 0;
 }
@@ -198,8 +205,11 @@ int http_handshake(const char *host, const char *path, std::string &body) {
 int main(int argc, char *argv[]) {
 
     char host_name[] = "ws.okx.com";
-    int service = 433;
     char path[] = "/ws/v5/public";
+    //char host_name[] = "ws-api.binance.com";
+    //char path[] = "/ws-api/v3";
+    int service = 9433;
+
     std::string body;
 
     // 初始化 OpenSSL 库
@@ -256,19 +266,20 @@ int main(int argc, char *argv[]) {
 
 
     std::string msg = "{\n"
-                      "\"op\":\"subscribe\",\n"
-                      "\"args\":[\n"
-                      "{\n"
-                      "    \"channel\":\"tickers\",\n"
-                      "    \"instId\":\"LTC-USD-200327\"\n"
-                      "},\n"
-                      "{\n"
-                      "    \"channel\":\"candle1m\",\n"
-                      "    \"instId\":\"LTC-USD-200327\"\n"
-                      "}\n"
-                      "]\n"
+                      "    \"op\":\"subscribe\",\n"
+                      "    \"args\":[\n"
+                      "        {\n"
+                      "            \"channel\":\"tickers\",\n"
+                      "        },\n"
+                      "    ]\n"
                       "}";
 
+
+    /*
+    std::string msg = "{\n"
+                      "  \"id\": \"922bcc6e-9de8-440d-9e84-7c80933a8d0d\",\n"
+                      "  \"method\": \"ping\"\n"
+                      "}";*/
     wslay_event_msg event_msg = {
             .opcode = WSLAY_TEXT_FRAME,
             .msg = (uint8_t *) msg.c_str(),
