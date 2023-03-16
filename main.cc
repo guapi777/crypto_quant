@@ -16,20 +16,51 @@
 #include <fstream>
 #include <nettle/base64.h>
 #include <nettle/sha.h>
+#include <fcntl.h>
+#include <netinet/tcp.h>
+#include <sys/epoll.h>
 
 static int sockfd;
 static SSL *ssl;
 static const uint8_t makskey[] = {0x37u, 0xfau, 0x21u, 0x3du};
 
+int make_non_block(int fd) {
+    int flags, r;
+    while ((flags = fcntl(fd, F_GETFL, 0)) == -1 && errno == EINTR);
+    if (flags == -1) {
+        return -1;
+    }
+    while ((r = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1 && errno == EINTR);
+    if (r == -1) {
+        return -1;
+    }
+    return 0;
+}
+
+void ctl_epollev(int epollfd, int op, wslay_event_context_ptr &ws) {
+    epoll_event ev{};
+    memset(&ev, 0, sizeof(ev));
+    if (wslay_event_want_read(ws)) {
+        ev.events |= EPOLLIN;
+    }
+    if (wslay_event_want_write(ws)) {
+        ev.events |= EPOLLOUT;
+    }
+    if (epoll_ctl(epollfd, op, sockfd, &ev) == -1) {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
+    }
+}
+
 ssize_t recv_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, int flags, void *user_data) {
-    std::cout << "___frame_recv_callback____" << "len= " << len << std::endl;
+    std::cout << "___recv_callback____" << "len= " << len << std::endl;
     int r = SSL_read(ssl, buf, len);
     while (r > 0) {
         std::string_view stringView1((char *) buf, r);
 
         std::cout << stringView1 << std::endl;
 
-        r = SSL_read(ssl, buf, sizeof(buf) );
+        r = SSL_read(ssl, buf, sizeof(buf));
     }
 
 
@@ -48,6 +79,7 @@ ssize_t send_callback(wslay_event_context_ptr ctx, const uint8_t *data, size_t l
 }
 
 int genmask_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, void *user_data) {
+    std::cout << "genmask_callback" << std::endl;
     memcpy(buf, makskey, 4);
     return 0;
 
@@ -57,10 +89,9 @@ void on_msg_recv_callback(wslay_event_context_ptr ctx,
                           const struct wslay_event_on_msg_recv_arg *arg,
                           void *user_data) {
 
-    if (!wslay_is_ctrl_frame(arg->opcode)) {
-        struct wslay_event_msg msgarg = {arg->opcode, arg->msg, arg->msg_length};
-        wslay_event_queue_msg(ctx, &msgarg);
-    }
+
+    std::cout << "on_msg_recv_callback" << std::endl;
+
 }
 
 
@@ -206,9 +237,9 @@ int main(int argc, char *argv[]) {
 
     char host_name[] = "ws.okx.com";
     char path[] = "/ws/v5/public";
-    //char host_name[] = "ws-api.binance.com";
+    //char host_name[] = "testnet.binance.com";
     //char path[] = "/ws-api/v3";
-    int service = 9433;
+    int service = 433;
 
     std::string body;
 
@@ -254,6 +285,7 @@ int main(int argc, char *argv[]) {
             nullptr, /* on_frame_recv_start_callback */
             nullptr, /* on_frame_recv_callback */
             nullptr, /* on_frame_recv_end_callback */
+            //nullptr,
             on_msg_recv_callback, /* on_msg_recv_callback */
 
     };
@@ -265,35 +297,59 @@ int main(int argc, char *argv[]) {
     }
 
 
-    std::string msg = "{\n"
-                      "    \"op\":\"subscribe\",\n"
-                      "    \"args\":[\n"
-                      "        {\n"
-                      "            \"channel\":\"tickers\",\n"
-                      "        },\n"
-                      "    ]\n"
-                      "}";
-
-
-    /*
-    std::string msg = "{\n"
-                      "  \"id\": \"922bcc6e-9de8-440d-9e84-7c80933a8d0d\",\n"
-                      "  \"method\": \"ping\"\n"
-                      "}";*/
+    std::string msg = R"({
+    "id": "1512",
+    "op": "order",
+    "args": [{
+        "side": "buy",
+        "instId": "BTC-USDT",
+        "tdMode": "isolated",
+        "ordType": "market",
+        "sz": "100"
+    }]
+}
+)";
     wslay_event_msg event_msg = {
             .opcode = WSLAY_TEXT_FRAME,
-            .msg = (uint8_t *) msg.c_str(),
+            .msg =(uint8_t *) msg.c_str(),
             .msg_length = msg.size()
     };
 
     wslay_event_queue_msg(wslay_event_ctx, &event_msg);
+    make_non_block(sockfd);
+    int val = 1;
+    if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &val, (socklen_t) sizeof(val)) ==
+        -1) {
+        perror("setsockopt: TCP_NODELAY");
+        return -1;
+    }
+    int epollfd = epoll_create(1);
+    ctl_epollev(epollfd, EPOLL_CTL_ADD, wslay_event_ctx);
+    static const size_t MAX_EVENTS = 1;
+    epoll_event events[MAX_EVENTS];
 
-    wslay_event_send(wslay_event_ctx);
+    bool ok = true;
+    while (wslay_event_want_read(wslay_event_ctx) || wslay_event_want_write(wslay_event_ctx)) {
+        int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        if (nfds == -1) {
+            perror("epoll_wait");
+            return -1;
+        }
+        for (int n = 0; n < nfds; ++n) {
+            if (((events[n].events & EPOLLIN) && wslay_event_recv(wslay_event_ctx) != 0) ||
+                ((events[n].events & EPOLLOUT) && wslay_event_send(wslay_event_ctx) != 0)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!ok) {
+            break;
+        }
+        ctl_epollev(epollfd, EPOLL_CTL_MOD, wslay_event_ctx);
+    }
 
-
-    wslay_event_recv(wslay_event_ctx);
-
-
+    // wslay_event_send(wslay_event_ctx);
+    // wslay_event_recv(wslay_event_ctx);
     wslay_event_context_free(wslay_event_ctx);
 
     return 0;
